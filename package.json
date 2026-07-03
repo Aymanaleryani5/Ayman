@@ -1,0 +1,14 @@
+{
+  "name": "yemen-phone-bridge",
+  "version": "1.0.0",
+  "description": "Telegram Bot Bridge API for Render",
+  "main": "main.js",
+  "scripts": {
+    "start": "node main.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "input": "^1.0.1",
+    "telegram": "^2.22.2"
+  }
+}
