@@ -3,13 +3,13 @@ const { StringSession } = require("telegram/sessions");
 const express = require("express");
 
 const app = express();
-// تعيين منفذ ديناميكي متوافق مع Render لمنع أخطاء التشغيل
+// 🛠️ تعيين منفذ ديناميكي متوافق مع Render لمنع أخطاء التشغيل (Port Bind Error)
 const port = process.env.PORT || 8000;
 
 const apiId = 35971272; 
 const apiHash = "428aaf9f250bff93f61eee9d4aa343d1"; 
 
-// نص الجلسة المحفوظ الخاص بحسابك
+// ✅ نص الجلسة المحفوظ الخاص بحسابك
 let savedSession = "1BAAOMTQ5LjE1NC4xNjcuOTEBuycEQcgmvwyhl1+7fFT8yM1fYyKNYgIilA9WpUJR2oDkoL0Uyl0iHgyLQpiRf0s4XRPsVxRCdfEliD7vDRGWGojKfoLOgIs5NTHq8ChuwtHmNFbEDIxHBQtMMpDSqWz6e+GCASk79rrRW2XfSqQ4pySvZ70EI2LU0xOcrf47sSRjFZKQPwsdU1FPMTAfQyp3zx6XYqmxg2FBb5av2huxEb7iEmlhtCf/Fb1MR67ScaNNBi2uBiNKf/79ZZdbrDdtzkjVHY9/djRgHxS9BKJqgwB5lQ8P5JWS4xrzkBeHv746BWeoMK0iVrfxhIFGTTW47JY6XGl3zR+IpHw8+oV0ClQ=";
 
 const stringSession = new StringSession(savedSession);
@@ -26,7 +26,7 @@ async function startTelegram() {
     try {
         console.log("📱 جاري الاتصال بتليجرام السحابي...");
         await client.connect();
-        console.log("✅ تم تشغيل اتصال التليجرام بنجاح وبدون طلب كود تحقق!");
+        console.log("✅ تم تشغيل اتصال التليجرام بنجاح!");
     } catch (error) {
         console.error("❌ فشل تسجيل الدخول والاتصال:", error.message);
     }
@@ -69,8 +69,9 @@ async function processQueue() {
             if (cleanName) namesList.push(cleanName);
         }
 
-        // 5. إعادة الاستجابة للمستخدم المناسب في الطابور بدعم كامل للغة العربية
-        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        // 5. إعادة الاستجابة للمستخدم المناسب في الطابور بدعم كامل للغة العربية UTF-8
+        currentRequest.res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        
         if (namesList.length > 0) {
             console.log(`✅ تم تصفية ${namesList.length} اسماً للرقم ${currentRequest.targetNumber}`);
             currentRequest.res.json({ 
@@ -90,13 +91,16 @@ async function processQueue() {
 
     } catch (err) {
         console.error(`❌ خطأ أثناء تدوير الطابور للرقم ${currentRequest.targetNumber}: ${err.message}`);
-        currentRequest.res.status(500).json({ success: false, error: "حدث خطأ غير متوقع في السيرفر" });
+        // في حال حدوث خطأ، نقوم بالرد على المستخدم لتجنب تعليق الطلب في الفلاتر
+        if (!currentRequest.res.headersSent) {
+            currentRequest.res.status(500).json({ success: false, error: "حدث خطأ غير متوقع في السيرفر" });
+        }
     } finally {
         // إزالة الطلب الحالي بعد المعالجة، وفتح القفل للطلب التالي
         requestQueue.shift();
         isProcessing = false;
         
-        // فترة راحة أمان قصيرة جداً (نصف ثانية) لحماية حسابك
+        // فترة راحة أمان قصيرة جداً (نصف ثانية) لحماية حسابك من الـ Flood
         await new Promise(resolve => setTimeout(resolve, 500));
         
         // استدعاء الدالة مجدداً لمعالجة الطلبات التالية إن وُجدت
@@ -104,7 +108,7 @@ async function processQueue() {
     }
 }
 
-// إعدادات الـ CORS لتسهيل الاتصالات من الأجهزة الخارجية
+// إعدادات الـ CORS لتسهيل الاتصالات من الأجهزة الخارجية وتطبيق الفلاتر
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -133,6 +137,16 @@ app.listen(port, '0.0.0.0', async () => {
     await startTelegram();
 });
 
-// معالجة الأخطاء المفاجئة لمنع السيرفر من الانهيار (Crash)
-process.on('uncaughtException', (error) => { console.error('❌ خطأ غير متوقع:', error); });
-process.on('SIGINT', () => { process.exit(); });
+// معالجة الأخطاء المفاجئة في الـ Global Scope لمنع السيرفر من الانهيار (Crash)
+process.on('uncaughtException', (error) => { 
+    console.error('❌ خطأ غير متوقع في النظام:', error.message); 
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ وعد غير معالج (Unhandled Rejection) عند:', promise, 'السبب:', reason);
+});
+
+process.on('SIGINT', () => { 
+    console.log('🛑 إيقاف السيرفر بطلب من النظام...');
+    process.exit(); 
+});
