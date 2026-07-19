@@ -1,14 +1,12 @@
 {
-  "name": "yemen-phone-bridge",
+  "name": "yemen-phone-proxy",
   "version": "1.0.0",
-  "description": "Telegram Bot Bridge API for Render",
-  "main": "main.js",
+  "description": "Proxy backend for number detection",
+  "main": "index.js",
   "scripts": {
-    "start": "node main.js"
+    "start": "node index.js"
   },
   "dependencies": {
-    "express": "^4.19.2",
-    "input": "^1.0.1",
-    "telegram": "^2.22.2"
+    "express": "^4.19.2"
   }
 }
